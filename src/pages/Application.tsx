@@ -1,65 +1,66 @@
-import {
-	CheckBadgeIcon
-} from '@heroicons/react/20/solid'
+import { UserIcon } from '@heroicons/react/24/solid'
 import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import ActionButtons from '../components/ActionButtons'
 import Profile from '../components/Profile'
 import ActionButtonsSkeleton from '../components/Skeletons/ActionButtonsSkeleton'
 import ProfileSkeleton from '../components/Skeletons/ProfileSkeleton'
 import { useAuth } from '../contexts/AuthContext'
-import User from '../models/User'
-import { AnswerData } from '../types/Answer'
+import { UserService } from '../services/userService'
 import { QuestionData } from '../types/Question'
 import { UserData } from '../types/User'
 import Dashboard from './Dashboard'
 import ViewQuestion from './ViewQuestion'
+import { QuestionService } from '../services/questionService'
+import NewQuestion from './NewQuestion'
 
 export default function Application() {
-	const [user, setUser] = useState<{ data: UserData, questions?: QuestionData[], answers?: AnswerData[] }>();
+	const [user, setUser] = useState<UserData>();
+	const [questions, setQuestions] = useState<QuestionData[]>();
+
 	const auth = useAuth();
+	const location = useLocation();
 
 	async function loadUser() {
-		
 		const token = auth.getToken();
-		const userClient = new User(token!);
-		const userData = await userClient.me();
+		const userService = new UserService();
+		const user = await userService.user(token!);
 
-		if (userData != null) {
-			const userQuestions = await userClient.questions(10);
-			const userAnswers = await userClient.answers();
+		if (user.success && user.data != null) {
+			setUser(user.data);
+		}
+	}
 
-			setUser({
-				data: userData,
-				questions: userQuestions!,
-				answers: userAnswers!
-			});
+	async function loadQuestions() {
+		const token = auth.getToken();
+		const questionService = new QuestionService();
+		const questions = await questionService.index(token!);
+
+		if (questions.success && questions.data) {
+			setQuestions(questions.data);
 		}
 	}
 
 	useEffect(() => {
 		loadUser();
-	}, []);
+		loadQuestions();
+	}, [location]);
 
 	return (
 		<>
 			<div className="relative flex min-h-full flex-col">
-				{/* 3 column wrapper */}
 				<div className="w-full flex-grow lg:flex">
-					{/* Left sidebar & main wrapper */}
-					<div className="min-w-0 flex-1 bg-white xl:flex">
-						{/* Account profile */}
-						<div className="bg-white xl:w-72 xl:flex-shrink-0 xl:border-r xl:border-gray-200 xl:flex xl:flex-col xl:items-center px-2">
+					<div className="min-w-0 flex-1 bg-zinc-950 xl:flex">
+						<div className="bg-zinc-950 xl:w-72 xl:flex-shrink-0 xl:border-r xl:border-zinc-900 xl:flex xl:flex-col xl:items-center px-2">
 							<div className="xl:fixed py-6 sm:px-6 lg:px-8">
 								<div className="flex items-center justify-between xl:px-4 xl:w-72">
 									<div className="flex-1 space-y-8 w-full">
 										<div className="space-y-8 sm:flex sm:items-center sm:justify-between sm:space-y-0 xl:block xl:space-y-8">
-											{/* Profile && Action Buttons */}
 											{
 												user
 													?
 													<>
-														<Profile user={user.data} />
+														<Profile user={user} />
 														<ActionButtons />
 													</>
 													:
@@ -73,23 +74,33 @@ export default function Application() {
 													</div>
 											}
 										</div>
-										{/* Meta info */}
-										<div className="flex flex-col space-y-6 sm:flex-row sm:space-x-8 sm:space-y-0 xl:flex-col xl:space-x-0 xl:space-y-6">
-											<div className="flex items-center space-x-2">
-												<CheckBadgeIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-												<span className="text-sm font-medium text-gray-500">Premium User</span>
-											</div>
-										</div>
+										{
+											user
+												?
+												<div className="flex flex-col space-y-6 sm:flex-row sm:space-x-8 sm:space-y-0 xl:flex-col xl:space-x-0 xl:space-y-6">
+													<div className="flex items-center space-x-2">
+														<UserIcon className="h-5 w-5 text-gray-200" aria-hidden="true" />
+														<span className="text-sm font-medium text-slate-400">Member since</span>
+														<span className='text-sm font-medium text-slate-300'>{new Date(user.created_at).toDateString()}</span>
+													</div>
+												</div>
+												:
+												<div className='h-5 bg-gray-700 animate-pulse rounded-md' />}
 									</div>
 								</div>
 							</div>
 						</div>
-
-						{/* Question */}
 						<Routes>
-							<Route path='dashboard' Component={Dashboard}/>
-							<Route path='questions/:id' Component={ViewQuestion} />
-							<Route path='*' element={<Navigate to={'/dashboard'}/>}/>
+							<Route path='dashboard' element={
+								<Dashboard user={user!} questions={questions!} />
+							} />
+							<Route path='questions/:id' element={
+								<ViewQuestion />
+							} />
+							<Route path='questions/create' element={
+								<NewQuestion />
+							} />
+							<Route path='*' element={<Navigate to={'dashboard'} />} />
 						</Routes>
 					</div>
 				</div>

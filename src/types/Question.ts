@@ -1,4 +1,4 @@
-import { AnswerCompleteData } from "./Answer"
+import { AnswerData } from "./Answer"
 import { CategoryData } from "./Category"
 import { UserLookupData } from "./User"
 
@@ -10,16 +10,15 @@ export type QuestionData = {
 	created_at: Date
 	updated_at: Date
 	answered_at: Date
+
+  answers: AnswerData[]
+  categories: CategoryData[]
+
+  user: UserLookupData
 }
 
-export interface QuestionCompleteData {
-  id: number
-  title: string
-  description: string
-  user_id: number
-  created_at: string
-  updated_at: string
-  answers: AnswerCompleteData[]
-  categories: CategoryData[]
-  user: UserLookupData
+export type QuestionCreateData = {
+	title: string,
+	description: string,
+	user_id: string
 }

@@ -1,104 +1,80 @@
-import { useEffect, useState } from 'react'
-import ActivityList from '../components/ActivityList'
-import Loader from '../components/Loader'
-import QuestionCard from '../components/Question/QuestionCard'
-import { useAuth } from '../contexts/AuthContext'
-import Question from '../models/Question'
-import User from '../models/User'
-import { AnswerData } from '../types/Answer'
-import { QuestionCompleteData, QuestionData } from '../types/Question'
-import { UserData } from '../types/User'
+import { useEffect, useState } from 'react';
+import ActivityList from '../components/ActivityList';
+import QuestionCard from '../components/Question/QuestionCard';
+import ActivityListSkeleton from '../components/Skeletons/ActivityListSkeleton';
+import { AnswerData } from '../types/Answer';
+import { QuestionData } from '../types/Question';
+import { UserData } from '../types/User';
 
-export default function Dashboard() {
-	const [user, setUser] = useState<{ data: UserData, questions?: QuestionData[], answers?: AnswerData[] }>();
-	const [questions, setQuestions] = useState<QuestionCompleteData[]>();
-	const [activities, setActivities] = useState<ActivityData[]>();
-	const auth = useAuth();
+type DashboardProps = {
+	user: UserData
+	questions?: QuestionData[];
+};
 
-	async function loadUser() {
-		const token = auth.getToken();
-		const userClient = new User(token!);
-		const userData = await userClient.me();
+export default function Dashboard({ user, questions }: DashboardProps) {
+	const [activities, setActivities] = useState<ActivityData[] | null>(null);
 
-		if (userData != null) {
-			const userQuestions = await userClient.questions(10);
-			const userAnswers = await userClient.answers();
-
-			setUser({
-				data: userData,
-				questions: userQuestions!,
-				answers: userAnswers!
-			});
-		}
-	}
-
-	async function loadQuestions() {
-		const token = auth.getToken();
-		const questions = await Question.all(token!);
-
-		if (questions) {
-			setQuestions(questions);
-		}
-	}
-
+	// Efeito para atualizar atividades com base nas props
 	useEffect(() => {
-		loadUser();
-		loadQuestions();
-	}, []);
+		if (user && questions) {
+			const combinedActivities = [...user.answers || [], ...user.questions || []];
+			combinedActivities.sort((actA, actB) => new Date(actB.created_at).getTime() - new Date(actA.created_at).getTime());
 
-	useEffect(() => {
-		if (user) {
-			const activities = [...user.answers!, ...user.questions!];
-			activities.sort((act_a, act_b) => Date.parse(act_a.created_at.toString()) - Date.parse(act_b.created_at.toString()));
-			setActivities(activities.map((act) => {
+			// Converte atividades combinadas em dados de atividade
+			// O ID da atividade é o mesmo do ID da questão associada
+			const activityData = combinedActivities.map((activity) => {
+				const isQuestion = 'title' in activity;
+
+				const questionId = isQuestion ? activity.id : (activity as AnswerData).question_id;
 				return {
-					date: act.created_at,
-					type: (act as AnswerData).question_id ? 'answer' : 'question',
-					title: (act as QuestionData).description ? `${(act as QuestionData).title}` : "View",
-					id: act.id
-				}
-			}));
+					date: activity.created_at,
+					type: isQuestion ? 'question' : 'answer',
+					title: isQuestion ? (activity as QuestionData).title : `View question #${activity.question_id}`,
+					id: questionId,  // O ID é o ID da questão associada
+				};
+			}) as ActivityData[];
+
+			setActivities(activityData);
 		}
-	}, [user]);
+	}, [user, questions]);
 
 	return (
 		<>
 			<div className="mx-auto w-full flex-grow lg:flex">
-				<div className="min-w-0 flex-1 bg-white xl:flex min-h-screen">
-					{/* Questions List */}
-					<div className="bg-white lg:min-w-0 lg:flex-1 min-h-screen">
-						<div className="border-b border-t border-gray-200 shadow-sm pb-4 pl-4 pr-6 pt-4 sm:pl-6 lg:pl-8 xl:border-t-0 xl:pl-6 xl:pt-6">
+				<div className="min-w-0 flex-1 bg-zinc-950 xl:flex min-h-screen">
+					<div className="bg-zinc-950 lg:min-w-0 lg:flex-1 min-h-screen">
+						<div className="border-b border-t border-zinc-900 shadow-sm pb-4 pl-4 pr-6 pt-4 sm:pl-6 lg:pl-8 xl:border-t-0 xl:pl-6 xl:pt-6">
 							<div className="flex items-center">
-								<h1 className="flex-1 text-lg font-medium">Questions</h1>
+								<h1 className="flex-1 text-lg font-medium text-white">Questions</h1>
 							</div>
-
 						</div>
-						{questions ?
-							<ul role="list" className="divide-y divide-gray-200 border-b border-gray-200">
+						{questions ? (
+							<ul role="list" className="divide-y divide-zinc-900 border-b border-zinc-900">
 								{questions.map((question) => (
 									<QuestionCard data={question} key={question.id} />
 								))}
 							</ul>
-							: <div className='w-full flex justify-center itens-center p-4'><Loader /></div>
-						}
+						) : (
+							<div className="m-4 h-24 bg-gray-700 animate-pulse flex justify-center items-center p-4 rounded-md" />
+						)}
 					</div>
 				</div>
-				{/* Activity feed */}
-				<div className="bg-gray-50 pr-4 sm:pr-6 lg:flex-shrink-0 lg:border-l lg:border-gray-200 lg:pr-8 xl:pr-0">
+
+				<div className="bg-zinc-950 pr-4 sm:pr-6 lg:flex-shrink-0 lg:border-l lg:border-zinc-900 lg:pr-8 xl:pr-0">
 					<div className="pl-6 lg:w-80 px-6">
 						<div className="pb-2 pt-6">
-							<h2 className="text-sm font-semibold">Recent activity</h2>
+							<h2 className="text-sm font-semibold text-white">Recent activity</h2>
 						</div>
 						<div>
-							{
-								activities
-									? <ActivityList data={activities} />
-									: <div className='animate-pulse'><div className='w-full h-12 bg-gray-400 rounded-md my-4' /><div className='w-full h-12 bg-gray-400 rounded-md my-4' /></div>
-							}
+							{activities ? (
+								<ActivityList data={activities} />
+							) : (
+								<ActivityListSkeleton />
+							)}
 						</div>
 					</div>
 				</div>
 			</div>
 		</>
-	)
+	);
 }

@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ErrorList from "../components/ErrorList";
 import { useAuth } from "../contexts/AuthContext";
-import User from "../models/User";
+import { AuthService } from "../services/authService"; // Importando AuthService
 import { Validator } from "../utils/validator";
 
 type FormRegisterResult = {
-	email: boolean,
-	name: boolean,
-	password: boolean,
-}
+	email: boolean;
+	name: boolean;
+	password: boolean;
+};
 
 export default function Register() {
 	const navigate = useNavigate();
@@ -22,15 +22,19 @@ export default function Register() {
 	});
 
 	const [active, setActive] = useState(true);
-
 	const [formResults, setFormResults] = useState<FormRegisterResult | null>(null);
 	const [errors, setErrors] = useState<string[]>([]);
 
+	// Cria uma instância de AuthService
+	const authService = new AuthService();
+
+	// Manipulador de mudança nos campos do formulário
 	const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = event.target;
 		setFormData((prevData) => ({ ...prevData, [name]: value }));
 	};
 
+	// Valida o formulário com base nas regras definidas
 	const validateForm = () => {
 		const { name, email, password } = formData;
 		const newFormResults: FormRegisterResult = {
@@ -39,62 +43,71 @@ export default function Register() {
 			password: Validator.validatePassword(password),
 		};
 
-		setErrors([]);
 		setFormResults(newFormResults);
+		setErrors(getFormErrors(newFormResults));
 	};
 
-	const getFormErrors = () => {
-		const errors: string[] = [];
-		if (formResults) {
-			if (!formResults.name) errors.push('You must enter your name.');
-			if (!formResults.email) errors.push('Your email must be in the format "xxxxxxx@email.com".');
-			if (!formResults.password) errors.push('Your password must be at least 8 characters long.');
+	// Gera a lista de erros com base nos resultados da validação do formulário
+	const getFormErrors = (results: FormRegisterResult): string[] => {
+		const errorMessages: string[] = [];
+		if (!results.name) {
+			errorMessages.push("You must enter your name.");
 		}
-		return errors;
+		if (!results.email) {
+			errorMessages.push("Your email must be in the format 'xxxxxxx@email.com'.");
+		}
+		if (!results.password) {
+			errorMessages.push("Your password must be at least 8 characters long.");
+		}
+		return errorMessages;
 	};
 
-	useEffect(() => {
-		if (formResults) {
-			setErrors(getFormErrors());
-		}
-	}, [formResults]);
-
+	// Manipulador de envio do formulário
 	const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-		setActive(false);
 		event.preventDefault();
+		setActive(false);
 		validateForm();
-		const isFormValid = formResults ? Object.values(formResults).every((v) => v) : false;
-		if (isFormValid) {
-			const loginBody = { name: formData.name, email: formData.email, password: formData.password };
-			const registerData = await User.register(loginBody);
-			if (registerData != null) {
-				const body = { email: registerData.email, password: loginBody.password };
-				const loginData = await User.login(body);
 
-				if (loginData != null) {
-					const token = loginData.token;
-					saveToken(token);
+		const isFormValid = formResults ? Object.values(formResults).every(Boolean) : false;
+		if (isFormValid) {
+			try {
+				const response = await authService.register(formData);
+
+				console.log(response);
+				if (response.success && response.data) {
+					const login = await authService.login({
+						email: formData.email,
+						password: formData.password
+					});
+					if (login.success && login.data)
+						saveToken(login.data.token);
 					navigate("/app/dashboard");
+				} else {
+					setErrors([response.data?.message || "Registration failed. Please try again."]);
 				}
+			} catch (error) {
+				console.error("Error registering:", error);
+				setErrors(["Error registering. Please try again later."]);
 			}
 		}
+
 		setActive(true);
 	};
 
 	return (
 		<div className="flex min-h-full flex-1 flex-col justify-center items-center px-6 py-12 lg:px-8">
-			{(errors.length > 0) && <ErrorList errors={errors} />}
+			{errors.length > 0 && <ErrorList errors={errors} />}
+
 			<div className="sm:mx-auto sm:w-full sm:max-w-sm">
-				<h2 className="mt-10 text-center text-3xl font-bold leading-9 tracking-tight text-gray-900">
+				<h2 className="mt-10 text-center text-3xl font-bold leading-9 tracking-tight text-white">
 					Create an account
 				</h2>
 			</div>
 
 			<div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-				{/* Form */}
 				<form className="space-y-6" onSubmit={handleSubmit}>
 					<div>
-						<label htmlFor="name" className="block text-sm font-medium leading-6 text-gray-900">
+						<label htmlFor="name" className="block text-sm font-medium leading-6 text-gray-200">
 							Name
 						</label>
 						<div className="mt-2">
@@ -103,31 +116,33 @@ export default function Register() {
 								name="name"
 								type="text"
 								required
-								className="transition-colors block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6"
+								value={formData.name}
 								onChange={handleChange}
+								className="bg-zinc-900 block w-full rounded-md border-0 py-1.5 text-gray-200 shadow-sm ring-1 ring-inset ring-gray-800 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6"
 							/>
 						</div>
 					</div>
 
 					<div>
-						<label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">
+						<label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-200">
 							Email address
 						</label>
 						<div className="mt-2">
 							<input
 								id="email"
 								name="email"
-								type="text"
+								type="email"
 								required
-								className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6"
+								value={formData.email}
 								onChange={handleChange}
+								className="bg-zinc-900 block w-full rounded-md border-0 py-1.5 text-gray-200 shadow-sm ring-1 ring-inset ring-gray-800 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6"
 							/>
 						</div>
 					</div>
 
 					<div>
 						<div className="flex items-center justify-between">
-							<label htmlFor="password" className="block text-sm font-medium leading-6 text-gray-900">
+							<label htmlFor="password" className="block text-sm font-medium leading-6 text-gray-200">
 								Password
 							</label>
 						</div>
@@ -137,8 +152,9 @@ export default function Register() {
 								name="password"
 								type="password"
 								required
-								className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6"
+								value={formData.password}
 								onChange={handleChange}
+								className="bg-zinc-900 block w-full rounded-md border-0 py-1.5 text-gray-200 shadow-sm ring-1 ring-inset ring-gray-800 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6"
 							/>
 						</div>
 					</div>
@@ -146,9 +162,8 @@ export default function Register() {
 					<div>
 						<button
 							type="submit"
-							onClick={validateForm}
-							className={"transition-colors flex w-full justify-center rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 " + (!active ? "opacity-50" : "")}
 							disabled={!active}
+							className={`transition-colors flex w-full justify-center rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 ${!active ? 'opacity-50' : ''}`}
 						>
 							Sign up
 						</button>
@@ -156,11 +171,13 @@ export default function Register() {
 						<p className="mt-10 text-center text-md text-gray-500">
 							Have an account?
 							<span>&nbsp;</span>
-							<Link to="/login" className="font-semibold leading-6 text-emerald-600 hover:text-emerald-500">Sign in</Link>
+							<Link to="/login" className="font-semibold leading-6 text-emerald-600 hover:text-emerald-500">
+								Sign in
+							</Link>
 						</p>
 					</div>
 				</form>
 			</div>
 		</div>
-	)
+	);
 }

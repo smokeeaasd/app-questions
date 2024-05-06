@@ -6,7 +6,7 @@ type ActivityListProps = {
 }
 export default function ActivityList(props: ActivityListProps) {
 	return (
-		<ul role="list" className="divide-y divide-gray-200">
+		<ul role="list" className="divide-y divide-zinc-800">
 			{props.data.map((item, index) => (
 				<li key={index} className="py-4">
 					<div className="flex space-x-3">
@@ -15,7 +15,7 @@ export default function ActivityList(props: ActivityListProps) {
 						</div>
 						<div className="flex-1 space-y-1">
 							<div className="flex items-center justify-between">
-								<h3 className="text-sm font-medium">{item.type == 'question' ? 'Opened a question' : 'Answered a question'}</h3>
+								<h3 className="text-sm font-medium text-gray-200">{item.type == 'question' ? 'Opened a question' : 'Answered a question'}</h3>
 								<p className="text-sm text-gray-500">{formatDate(new Date(item.date))}</p>
 							</div>
 							<Link to={`/app/questions/${item.id}`} className="text-blue-500">

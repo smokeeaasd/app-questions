@@ -5,9 +5,11 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+    },
   },
   plugins: [
-    require("@tailwindcss/forms")
+    require("@tailwindcss/forms"),
+    require("@tailwindcss/typography"),
   ],
 }

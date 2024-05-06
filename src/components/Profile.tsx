@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { UserData } from "../types/User";
 import AccountIcon from "./AccountIcon";
 
@@ -13,10 +12,10 @@ export default function Profile(props: ProfileProps) {
 				<AccountIcon name={props.user.name.toUpperCase()} color="pink-600" />
 			</div>
 			<div className="space-y-1">
-				<div className="text-sm font-medium text-gray-900">{props.user.name}</div>
+				<div className="text-sm font-medium text-gray-200">{props.user.name}</div>
 				<div className="flex items-center">
 					<span className="text-sm font-medium text-blue-500">
-						<Link to={"/settings"}>Account details</Link>
+						{/* <Link to={"settings"}>Account details</Link> */}
 					</span>
 				</div>
 			</div>
