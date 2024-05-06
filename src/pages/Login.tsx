@@ -51,9 +51,9 @@ export default function Login() {
 	const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
 		setIsActive(false);
 		event.preventDefault();
-		validateForm();
 
 		const isFormValid = formValidation ? Object.values(formValidation).every(Boolean) : false;
+		
 		if (isFormValid) {
 			const loginData: UserLoginData = {
 				email: formData.email,
@@ -131,6 +131,7 @@ export default function Login() {
 						<button
 							type="submit"
 							disabled={!isActive}
+							onClick={() => validateForm()}
 							className={`transition-colors flex w-full justify-center rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 ${!isActive ? 'opacity-50' : ''}`}
 						>
 							Login
